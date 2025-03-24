@@ -5,12 +5,17 @@ characteristics impact the price of houses. The dataset we used was obtained fro
 housing prices located in the Northeastern United States in 1970. It contains 545 observations and we
 selected 6 variables to analyze:
 
-● Price (numeric continuous): Measure of the house cost in an undisclosed unit
-● Area (numeric continuous): Measures the house size in an undisclosed unit
-● Bedrooms (numeric discrete): The count of bedrooms per house
-● Bathrooms (numeric discrete): The count of bathrooms per house
-● Mainroad (categorical): Indicates whether the house is located on a main road
-● Furnishing status (categorical): Indicates whether the house is unfurnished
+- Price (numeric continuous): Measure of the house cost in an undisclosed unit
+
+- Area (numeric continuous): Measures the house size in an undisclosed unit
+
+- Bedrooms (numeric discrete): The count of bedrooms per house
+
+- Bathrooms (numeric discrete): The count of bathrooms per house
+
+- Mainroad (categorical): Indicates whether the house is located on a main road
+
+- Furnishing status (categorical): Indicates whether the house is unfurnished
 
 ### File Description
 

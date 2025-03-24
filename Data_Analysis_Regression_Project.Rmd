@@ -1,0 +1,212 @@
+---
+title: "stats101a_project"
+author: "celinenugroho"
+date: "2025-03-03"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r, message=FALSE}
+library(dplyr)
+library(car)
+```
+
+
+## Data cleaning
+
+```{r}
+# Importing dataset
+housing <- read.csv("housing.csv")
+head(housing)
+```
+
+```{r}
+# Changing categorical with 3 levels to 2 for model validity
+housing <- housing %>%
+  mutate(furnishingstatus = ifelse(furnishingstatus == "semi-furnished", "furnished", furnishingstatus))
+```
+
+```{r}
+# Converting characters to factors
+housing <- housing %>%
+  mutate_if(is.character, as.factor)
+```
+
+```{r}
+# Encoding furnished - 1, unfurnished - 0
+housing$furnishingstatus <- relevel(housing$furnishingstatus, ref = "unfurnished")
+
+# Encoding categorical variables as 0 and 1
+housing <- model.matrix(~ . -1, data = housing)
+housing <-as.data.frame(housing)
+head(housing)
+```
+
+```{r}
+# Removing mainroadno from dataset
+housing <- housing %>%
+  select(-mainroadno)
+```
+
+```{r}
+# Renaming columns for readability
+housing <- housing %>%
+  rename(mainroad = mainroadyes,
+         guestroom = guestroomyes,
+         basement = basementyes,
+         hotwater = hotwaterheatingyes,
+         ac = airconditioningyes,
+         prefarea = prefareayes,
+         furnishing = furnishingstatusfurnished)
+```
+
+```{r}
+m1 <- lm(price ~ area + bedrooms + bathrooms + mainroad + furnishing, data = housing)
+```
+
+```{r}
+summary(m1)
+```
+
+\newpage
+
+## Scatterplot analysis
+
+```{r}
+#SCATTER PLOT FOR ALL THE VARIABLES
+pairs(housing, main = "Housing Data Scatter Plot Matrix: All Variables")
+```
+
+```{r}
+#histograms
+par(mfrow = c(2,3))
+hist(housing$price, main = "price")
+hist(housing$area, main = "area")
+hist(housing$bedrooms, main = "bedrooms")
+hist(housing$bathrooms, main = "bathrooms")
+hist(housing$mainroad, main = "mainroad")
+hist(housing$furnishing, main = "furnishing")
+plot.new() 
+plot.new()
+plot.new()
+```
+
+```{r}
+#correlation Matrix
+correlation_matrix <- cor(housing)
+options(width = 200)
+print(correlation_matrix)
+```
+
+\newpage
+
+## Standardized residual and added variable plots
+
+```{r}
+StanRes1 <- rstandard(m1)
+par(mfrow=c(2,2))
+plot(housing$area, StanRes1, ylab = "Standardized Residuals", xlab = "Area")
+plot(housing$bedrooms, StanRes1, ylab = "Standardized Residuals", xlab= "Bedrooms")
+plot(housing$bathrooms, StanRes1, ylab = "Standardized Residuals", xlab = "Bathrooms")
+plot(housing$mainroad, StanRes1, ylab = "Standardized Residuals", xlab = "mainroad")
+plot(housing$furnishing, StanRes1, ylab = "Standardized Residuals", xlab = "furnishing")
+
+```
+
+```{r}
+library(car)
+par(mfrow= c(2,2))
+avPlot(m1, "area", ask = FALSE)
+avPlot(m1, "bedrooms", ask = FALSE)
+avPlot(m1, "bathrooms", ask = FALSE)
+avPlot(m1, "mainroad", ask = FALSE)
+avPlot(m1, "furnishing", ask = FALSE)
+
+```
+
+```{r}
+par(mfrow=c(2,2))
+plot(m1)
+
+#outliers
+length(which(abs(rstandard(m1)) > 2))
+
+#leverage points
+n <- nrow(housing)
+
+p <- length(m1$coefficients) - 1
+length(which(hatvalues(m1) > 2 * (p+1)/n))
+
+#influential points
+length(which(cooks.distance(m1) > 4/(n-2)))
+```
+
+
+\newpage
+
+## Transformation
+Box-Cox transformation is not appropriate for categorical data.
+
+1. Box-Cox on numeric variables and predictor
+```{r}
+summary(with(housing, powerTransform(cbind(price, area, bedrooms, bathrooms) ~ 1)))
+```
+
+
+2. Box-Cox on numeric variables, inverse response plot on predictor
+```{r}
+summary(with(housing, powerTransform(cbind(area, bedrooms, bathrooms) ~ 1)))
+```
+
+Apply Box-Cox transform on original variables
+```{r}
+m2 <- lm(price ~ log(area) + I(bedrooms ^ 0.5) + I(bathrooms ^ -4.5) + mainroad + furnishing, data = housing)
+```
+
+```{r}
+inverseResponsePlot(m2)
+```
+
+Since $\lambda$ = 0 produces comparably small RSS to $\lambda$ = 0.11, we choose to transform the response logarithmically.
+
+```{r}
+m3 <- lm(log(price) ~ log(area) + I(bedrooms ^ 0.5) + I(bathrooms ^ -4.5) + mainroad + furnishing, data = housing)
+```
+
+$\log(\hat{price})$ = $\beta_0$ + $\beta_1 log(area)$ + $\beta_2 bathrooms^{0.5}$ + $\beta_3 bathrooms^{-4.5}$ + $\beta_4 mainroad$ + $\beta_5 furnishing$ + e
+
+```{r}
+summary(m3)
+```
+
+
+```{r}
+par(mfrow=c(2,2))
+plot(m3)
+
+#outliers
+length(which(abs(rstandard(m3)) > 2))
+
+#leverage points
+n <- nrow(housing)
+
+p <- length(m1$coefficients) - 1
+length(which(hatvalues(m3) > 2 * (p+1)/n))
+
+#influential points
+length(which(cooks.distance(m3) > 4/(n-2)))
+```
+
+```{r}
+vif(m3)
+```
+
+
+```{r}
+mreduced <- lm(log(price) ~ log(area) + I(bedrooms ^ 0.5) + mainroad + furnishing, data = housing)
+anova(mreduced, m3)
+```
+
+
+No variable selection is needed
